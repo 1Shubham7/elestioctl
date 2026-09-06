@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::SystemTime;
 
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use clap::{Parser, Subcommand};
 
 use elestioctl::client::{ApiClient, ClientConfig};
@@ -164,8 +164,11 @@ fn report_error(e: &anyhow::Error, debug: bool) {
 }
 
 fn load_settings() -> anyhow::Result<Settings> {
-    let home =
-        config::home_dir().ok_or_else(|| anyhow!("HOME is not set; cannot locate ~/.elestio"))?;
+    // With no HOME, the credentials file cannot exist, but the environment
+    // variables still can (R3), and if they are absent the R5 message must
+    // still name the path and both variables. `~` stands in for the unknown
+    // home so the message reads naturally. Critic finding.
+    let home = config::home_dir().unwrap_or_else(|| PathBuf::from("~"));
     let settings = config::load(&home, &EnvOverrides::from_process_env())
         .context("failed to load credentials")?;
     for warning in &settings.warnings {
@@ -204,7 +207,11 @@ fn write_stdout(text: &str) {
     let mut lock = stdout.lock();
     if let Err(e) = lock.write_all(text.as_bytes()).and_then(|_| lock.flush()) {
         if e.kind() == std::io::ErrorKind::BrokenPipe {
-            std::process::exit(0);
+            // The reader went away. Say nothing and let the command's own
+            // outcome decide the exit code: `drift | head -1` must still
+            // exit 2 when drift was found (R11). The first version called
+            // exit(0) here, which the critic pass flagged.
+            return;
         }
         eprintln!("error: failed to write to stdout: {e}");
         std::process::exit(1);

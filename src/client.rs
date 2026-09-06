@@ -260,6 +260,8 @@ enum Attempt {
     RetryableStatus(u16),
     FinalStatus(u16),
     Transport(reqwest::Error),
+    /// A 2xx arrived but the body was not JSON (R17). Not retried.
+    NotJson(String),
 }
 
 impl ApiClient {
@@ -273,6 +275,11 @@ impl ApiClient {
         let _ = rustls::crypto::ring::default_provider().install_default();
         let http = reqwest::Client::builder()
             .timeout(config.timeout)
+            // R53, R6: never follow redirects. reqwest's default follows up
+            // to ten, and a 307/308 would replay the JSON body, JWT included,
+            // to whatever host the Location header names, past the allowlist
+            // check that ran on the original URL. Found by the critic pass.
+            .redirect(reqwest::redirect::Policy::none())
             .user_agent(concat!("elestioctl/", env!("CARGO_PKG_VERSION")))
             .build()
             .map_err(ClientError::Build)?;
@@ -340,7 +347,7 @@ impl ApiClient {
             .or_else(|| value.pointer("/data/services"))
             .cloned()
             .unwrap_or_else(|| Value::Array(Vec::new()));
-        let raw: Vec<RawService> = parse_typed(path, list)?;
+        let raw: Vec<RawService> = parse_typed(path, "servers", list)?;
         Ok(raw.into_iter().map(Service::from).collect())
     }
 
@@ -358,7 +365,7 @@ impl ApiClient {
             .get("serviceInfos")
             .cloned()
             .unwrap_or_else(|| Value::Array(Vec::new()));
-        let mut raw: Vec<RawService> = parse_typed(path, list)?;
+        let mut raw: Vec<RawService> = parse_typed(path, "serviceInfos", list)?;
         if raw.is_empty() {
             Ok(None)
         } else {
@@ -382,7 +389,7 @@ impl ApiClient {
                 .cloned()
                 .unwrap_or_else(|| Value::Array(Vec::new()))
         };
-        parse_typed(path, list)
+        parse_typed(path, "rules", list)
     }
 
     /// The single funnel every request goes through.
@@ -446,6 +453,15 @@ impl ApiClient {
                     }
                     return Ok(value);
                 }
+                Attempt::NotJson(reason) => {
+                    // R17: a parse error names the path; the whole body is
+                    // the failing "field". Not retried (R15).
+                    return Err(ClientError::Parse {
+                        path: path.to_string(),
+                        json_path: "$".to_string(),
+                        reason,
+                    });
+                }
                 Attempt::FinalStatus(status) => {
                     tracing::debug!(path, status, attempt, "non-retryable status");
                     return Err(ClientError::HttpStatus {
@@ -494,12 +510,18 @@ impl ApiClient {
         if !status.is_success() {
             return Attempt::FinalStatus(code);
         }
-        match response.json::<Value>().await {
+        // Read the body as text first so a decode failure is clearly a
+        // parse problem (R17) and not a transport one (R15). The first
+        // version passed reqwest's decode error through as Transport, which
+        // retried a non-JSON 200 three times; both QA and the critic caught
+        // it independently.
+        let text = match response.text().await {
+            Ok(t) => t,
+            Err(e) => return Attempt::Transport(e),
+        };
+        match serde_json::from_str::<Value>(&text) {
             Ok(v) => Attempt::Body(v),
-            // A 2xx whose body is not JSON at all. reqwest reports this as
-            // a decode error; treat it as transport so it is retried, since
-            // a truncated body is the usual cause.
-            Err(e) => Attempt::Transport(e),
+            Err(e) => Attempt::NotJson(e.to_string()),
         }
     }
 }
@@ -517,10 +539,27 @@ fn message_of(value: &Value) -> Option<String> {
 }
 
 /// R17: deserialise with the JSON path attached to any failure.
-fn parse_typed<T: DeserializeOwned>(path: &str, value: Value) -> Result<T, ClientError> {
-    serde_path_to_error::deserialize(value).map_err(|e| ClientError::Parse {
-        path: path.to_string(),
-        json_path: e.path().to_string(),
-        reason: e.inner().to_string(),
+fn parse_typed<T: DeserializeOwned>(
+    path: &str,
+    container: &str,
+    value: Value,
+) -> Result<T, ClientError> {
+    serde_path_to_error::deserialize(value).map_err(|e| {
+        // serde_path_to_error reports the path inside `value`; prefix it
+        // with the response member we extracted so the message names the
+        // field as it appears in the full body (`servers[1].vmID`).
+        let inner = e.path().to_string();
+        let json_path = if inner == "." {
+            container.to_string()
+        } else if inner.starts_with('[') {
+            format!("{container}{inner}")
+        } else {
+            format!("{container}.{inner}")
+        };
+        ClientError::Parse {
+            path: path.to_string(),
+            json_path,
+            reason: e.inner().to_string(),
+        }
     })
 }

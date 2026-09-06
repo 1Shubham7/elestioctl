@@ -60,11 +60,13 @@ impl Rule {
         protocol: &str,
         targets: impl IntoIterator<Item = String>,
     ) -> Rule {
+        // R40: type and protocol fold case; port and targets compare
+        // exactly, so they are not trimmed or otherwise normalised.
         Rule {
-            rule_type: rule_type.trim().to_ascii_uppercase(),
-            port: port.trim().to_string(),
-            protocol: protocol.trim().to_ascii_lowercase(),
-            targets: targets.into_iter().map(|t| t.trim().to_string()).collect(),
+            rule_type: rule_type.to_ascii_uppercase(),
+            port: port.to_string(),
+            protocol: protocol.to_ascii_lowercase(),
+            targets: targets.into_iter().collect(),
         }
     }
 
