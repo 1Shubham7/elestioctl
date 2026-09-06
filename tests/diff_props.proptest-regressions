@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 12905bf387c51f6dacf30677c2f55d3004c2ca8ee2b91bc032e071b2fc6f1436 # shrinks to rules = [("INPUT", "0", "tcp", []), ("INPUT", "0", "tcp", [])], flags = [0, 0, 0, 0, 0, 0]
+cc a78c888e754e43c9fa2446d99ef458d390b71f7bbefca9600b3b656d18367750 # shrinks to rules = [("INPUT", "0", "tcp", [])], flags = [0, 0, 0, 0, 0, 0]
+cc a016ad57ae070c14ff26f919cc65cad7ce78fa34c40825f7c0f4b940d3184c48 # shrinks to a = Actual { name: None, server_type: None, provider: None, datacenter: None, version: None, firewall: [] }, which = 0, replacement = "a"
