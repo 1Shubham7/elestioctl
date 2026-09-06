@@ -151,3 +151,69 @@ pub async fn firewall_get(
         rules,
     })
 }
+
+/// Result of `drift`: the resolved declarations and everything the API
+/// reported, ready for the pure engine and the renderer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DriftReport {
+    /// Differences in R42 order. Empty means no drift (R50).
+    pub differences: Vec<crate::diff::Difference>,
+    /// How many services were declared. Zero triggers a warning (R50).
+    pub declared_count: usize,
+}
+
+impl DriftReport {
+    /// R51: whether the process should exit 2.
+    pub fn drift_detected(&self) -> bool {
+        !self.differences.is_empty()
+    }
+}
+
+/// R37: fetch actual state for every declared service and diff it.
+///
+/// For each declared service, `getServerDetails` is called in its resolved
+/// project. An empty result becomes `None`, which the engine reports as
+/// `Missing` (R39). Firewall rules are fetched only when the declaration
+/// has a `firewall` key (R33) and the service says its firewall is enabled;
+/// a disabled firewall means an empty actual rule set (R29). Any fetch
+/// error aborts the whole command (R37): a partial report that exits 1
+/// would be ambiguous to a CI gate.
+pub async fn drift(
+    client: &ApiClient,
+    declared: &[crate::diff::Declared],
+) -> Result<DriftReport, CommandError> {
+    use crate::diff::{Actual, Rule};
+    use std::collections::BTreeMap;
+
+    let mut actual: BTreeMap<String, Actual> = BTreeMap::new();
+    for d in declared {
+        let Some(service) = client.get_service(&d.project, &d.id).await? else {
+            continue;
+        };
+        let firewall = match (&d.firewall, service.firewall_enabled) {
+            (Some(_), true) => client
+                .get_firewall_rules(&d.id)
+                .await?
+                .iter()
+                .map(Rule::from)
+                .collect(),
+            _ => Vec::new(),
+        };
+        actual.insert(
+            d.id.clone(),
+            Actual {
+                name: service.name,
+                server_type: service.server_type,
+                provider: service.provider,
+                datacenter: service.datacenter,
+                version: service.version,
+                firewall,
+            },
+        );
+    }
+
+    Ok(DriftReport {
+        differences: crate::diff::diff(declared, &actual),
+        declared_count: declared.len(),
+    })
+}

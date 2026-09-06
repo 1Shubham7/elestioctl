@@ -161,7 +161,7 @@ pub fn firewall_human(report: &FirewallReport) -> String {
             report.vm_id
         );
     }
-    let headers = ["TYPE", "PORT", "PROTOCOL", "TARGETS", ""];
+    let headers = ["TYPE", "PORT", "PROTOCOL", "TARGETS", "EXPOSURE"];
     let rows: Vec<Vec<String>> = report
         .rules
         .iter()

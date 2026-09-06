@@ -21,7 +21,9 @@ use clap::{Parser, Subcommand};
 use elestioctl::client::{ApiClient, ClientConfig};
 use elestioctl::commands;
 use elestioctl::config::{self, EnvOverrides, Settings};
+use elestioctl::drift_config;
 use elestioctl::output;
+use elestioctl::report;
 
 /// Read-only Elestio CLI with drift detection.
 #[derive(Parser, Debug)]
@@ -89,6 +91,8 @@ enum FirewallCommand {
 enum Outcome {
     /// Exit 0.
     Clean,
+    /// Exit 2: `drift` found differences (R51).
+    DriftDetected,
 }
 
 fn main() -> ExitCode {
@@ -135,6 +139,7 @@ fn main() -> ExitCode {
 
     match runtime.block_on(run(cli)) {
         Ok(Outcome::Clean) => ExitCode::SUCCESS,
+        Ok(Outcome::DriftDetected) => ExitCode::from(2),
         Err(e) => {
             report_error(&e, debug);
             ExitCode::from(1)
@@ -271,9 +276,41 @@ async fn run(cli: Cli) -> anyhow::Result<Outcome> {
             )?;
             Ok(Outcome::Clean)
         }
-        Command::Drift { config } => Err(anyhow!(
-            "drift is not implemented yet (config: {})",
-            config.display()
-        )),
+        Command::Drift { config } => {
+            // R32 to R36: parse and validate before touching the network, so
+            // a bad file fails fast and without credentials being exercised.
+            let parsed = drift_config::load(&config)
+                .with_context(|| format!("failed to load drift config {}", config.display()))?;
+            // R9, R22, R32: project fallback order is per-service, top-level,
+            // then --project, then defaultProject.
+            let fallback = cli
+                .project
+                .clone()
+                .or_else(|| settings.default_project.clone());
+            let declared = parsed
+                .resolve(fallback.as_deref())
+                .context("failed to resolve drift config")?;
+            if declared.is_empty() {
+                // R50: zero services is not an error, but say so.
+                eprintln!("warning: drift config declares no services");
+            }
+            commands::ensure_session(&mut client, &settings, SystemTime::now())
+                .await
+                .context("failed to sign in")?;
+            let report = commands::drift(&client, &declared)
+                .await
+                .context("drift check failed")?;
+            emit(
+                cli.json,
+                report::render_json(&report.differences),
+                report::render_human(&report.differences),
+            )?;
+            // R11, R50, R51
+            if report.drift_detected() {
+                Ok(Outcome::DriftDetected)
+            } else {
+                Ok(Outcome::Clean)
+            }
+        }
     }
 }
