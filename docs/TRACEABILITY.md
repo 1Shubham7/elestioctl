@@ -22,15 +22,15 @@ with the spec (details in the notes below the table); **GAP** means no test.
 | R9 | `--project` overrides `defaultProject` | commands: `r9_project_flag_overrides_default_project`; cli: `r9_project_flag_overrides_default_project` | covered |
 | R10 | `--debug` prints the full cause chain one per line; otherwise a single line | cli: `r10_debug_prints_the_error_chain_one_cause_per_line` | covered |
 | R11 | Exit codes 0 / 1 / 2; argument errors exit 1 | cli: `r11_argument_errors_exit_1_not_2`, `r11_success_exits_0`, `r11_network_error_exits_1` (plus `r51_*` for exit 2 and `r50_*` for exit 0) | covered |
-| R12 | Errors name the operation that failed | cli: `r12_error_names_the_operation_that_failed`, `r12_auth_failure_names_the_sign_in_operation` | covered |
+| R12 | Errors name the operation that failed | cli: `r12_error_names_the_operation_that_failed`, `r12_auth_failure_names_the_sign_in_operation`; mutation_kills: `r53_refused_action_error_names_the_action_and_path_with_zero_requests`, `r53_refused_path_without_action_error_names_the_path_with_zero_requests` (`// R12` comments) | covered |
 | R13 | Base URL via `ELESTIO_API_URL`, default `https://api.elest.io` | client: `r13_default_base_url_is_production`, `r13_base_url_is_configurable`; cli: `r13_api_url_env_var_points_the_binary_at_the_mock` | covered |
 | R14 | Per-attempt timeout, default 30 s, `ELESTIO_TIMEOUT_SECS` | client: `r14_default_timeout_is_thirty_seconds_and_overridable_by_env_name`, `r14_per_attempt_timeout_is_enforced_and_timeouts_are_retried`; cli: `r14_timeout_secs_env_var_bounds_each_attempt` | covered |
-| R15 | Retry 429/408/5xx/transport, 3 requests max, backoff `base * 2^(n-1)`, no retry on other 4xx or `KO` | client: `r15_retry_constants_match_spec`, `r15_retryable_status_set_is_exactly_408_429_and_5xx`, `r15_retries_5xx_three_times_in_total`, `r15_retries_429_then_succeeds`, `r15_retries_408_then_succeeds`, `r15_transport_error_is_retried_three_times`, `r15_backoff_is_base_times_two_to_the_n_minus_one`, `r15_other_4xx_is_not_retried`, `r15_ko_envelope_is_not_retried`; commands: `r15_drift_retries_a_flaky_details_call`; cli: `r15_binary_retries_5xx_three_times_then_fails`, `r15_binary_recovers_after_a_transient_5xx` | covered |
+| R15 | Retry 429/408/5xx/transport, 3 requests max, backoff `base * 2^(n-1)`, no retry on other 4xx or `KO` | client: `r15_retry_constants_match_spec`, `r15_retryable_status_set_is_exactly_408_429_and_5xx`, `r15_retries_5xx_three_times_in_total`, `r15_retries_429_then_succeeds`, `r15_retries_408_then_succeeds`, `r15_transport_error_is_retried_three_times`, `r15_backoff_is_base_times_two_to_the_n_minus_one`, `r15_other_4xx_is_not_retried`, `r15_ko_envelope_is_not_retried`; commands: `r15_drift_retries_a_flaky_details_call`; cli: `r15_binary_retries_5xx_three_times_then_fails`, `r15_binary_recovers_after_a_transient_5xx`; mutation_kills: `r15_backoff_delay_exact_values_for_default_style_base`, `r15_backoff_delay_first_retry_waits_exactly_base`, `r15_backoff_delay_attempt_zero_does_not_panic_and_equals_base`, `r15_backoff_delay_doubles_between_consecutive_attempts`, `r15_backoff_delay_matches_closed_form` | covered |
 | R16 | Non-retried failure names the path and the HTTP status or the `KO` message | client: `r16_http_error_names_path_and_status`, `r16_ko_error_names_path_and_api_message`, `r16_ko_without_message_still_names_path` | covered |
 | R17 | Malformed JSON: parse error naming the JSON path, no panic | client: `r17_non_json_body_is_a_parse_error_not_a_panic`, `r17_wrong_field_type_names_the_json_path`, `r17_wrong_container_type_names_the_json_path`, `r17_firewall_rule_missing_required_field_names_path` | covered (was FAILING when written; see note 1) |
 | R18 | `auth test` calls `checkAPIToken`, ignoring any cached JWT | client: `r18_sign_in_posts_email_and_token_to_check_api_token`; commands: `r18_auth_test_always_signs_in_even_with_fresh_cache`; cli: `r18_auth_test_ignores_a_fresh_cached_jwt` | covered |
 | R19 | Success prints the email; `--json` has `authenticated` and `email` | commands: `r19_auth_report_carries_the_authenticated_email`; output: `r19_auth_human_prints_the_email`, `r19_auth_json_has_authenticated_and_email`; cli: `r19_auth_test_human_prints_the_email`, `r19_auth_test_json_has_authenticated_and_email` | covered |
-| R20 | Auth failure exits 1; rejection distinct from "no credentials" | client: `r20_sign_in_rejected_when_status_is_not_ok`, `r20_sign_in_rejected_when_ok_but_no_jwt`; commands: `r20_auth_test_rejection_is_a_distinct_error`; cli: `r20_rejected_credentials_exit_1_and_are_not_confused_with_missing_ones`, `r20_ok_without_jwt_is_also_a_rejection` | covered |
+| R20 | Auth failure exits 1; rejection distinct from "no credentials" | client: `r20_sign_in_rejected_when_status_is_not_ok`, `r20_sign_in_rejected_when_ok_but_no_jwt`; commands: `r20_auth_test_rejection_is_a_distinct_error`; cli: `r20_rejected_credentials_exit_1_and_are_not_confused_with_missing_ones`, `r20_ok_without_jwt_is_also_a_rejection`; mutation_kills: `r20_sign_in_rejected_when_ok_but_jwt_is_empty_string` | covered |
 | R21 | List services for the resolved project | client: `r21_list_services_sends_spec_body_and_normalises_vmid`; commands: `r21_list_services_returns_the_project_services`; cli: `r21_services_lists_the_project` | covered |
 | R22 | No project: exit 1 naming `--project` and `elestio config --set-default-project <id>` | commands: `r22_no_project_error_names_flag_and_official_command`; drift_config: `r22_resolve_without_any_project_names_the_service_and_the_fix`; cli: `r22_no_project_exits_1_naming_flag_and_official_command`, `r22_drift_without_any_project_exits_1` | covered |
 | R23 | Human columns: id, name, template, version, provider, datacenter, server type, status | output: `r23_services_human_column_order`, `r23_services_human_snapshot`; cli: `r23_services_human_columns_in_spec_order` | covered |
@@ -63,7 +63,7 @@ with the spec (details in the notes below the table); **GAP** means no test.
 | R50 | No drift: `No drift detected.` and exit 0; zero services warns and exits 0 | report: `r50_no_drift_exact_string`; commands: `r50_no_differences_means_no_drift`, `r50_zero_declared_services_is_not_an_error`; cli: `r50_no_drift_prints_exact_line_and_exits_0`, `r50_no_drift_json_has_drift_detected_false`, `r50_zero_services_is_not_an_error_prints_no_drift_and_warns` | covered |
 | R51 | Drift found: exit 2 | commands: `r51_drift_detected_when_any_difference_exists`; cli: `r51_drift_detected_exits_2_with_r48_lines`, `r49_drift_json_shape`, `r39_missing_service_is_reported_not_an_error` | covered |
 | R52 | `#![forbid(unsafe_code)]` at the crate root | safety: `r52_crate_root_forbids_unsafe_code`, `r52_manifest_also_forbids_unsafe_code` | covered |
-| R53 | Closed allowlist of (method, path, action); anything else refused before sending; mock sees zero requests | client: `r53_allowlist_holds_exactly_the_four_spec_triples`, `r53_endpoint_enum_matches_spec_paths`, `r53_call_off_the_allowlist_sends_zero_requests`, `r53_do_action_with_other_action_sends_zero_requests`, `r53_wrong_method_on_allowed_path_sends_zero_requests`, `r53_allowed_call_through_request_is_sent_once` | covered |
+| R53 | Closed allowlist of (method, path, action); anything else refused before sending; mock sees zero requests | client: `r53_allowlist_holds_exactly_the_four_spec_triples`, `r53_endpoint_enum_matches_spec_paths`, `r53_call_off_the_allowlist_sends_zero_requests`, `r53_do_action_with_other_action_sends_zero_requests`, `r53_wrong_method_on_allowed_path_sends_zero_requests`, `r53_allowed_call_through_request_is_sent_once`; mutation_kills: `r53_refused_action_error_names_the_action_and_path_with_zero_requests`, `r53_refused_path_without_action_error_names_the_path_with_zero_requests` | covered |
 | R54 | Writes nothing anywhere, including the JWT | config: `r54_loading_config_creates_nothing_in_home`; cli: `r54_binary_writes_nothing_under_an_empty_home`, `r54_no_credentials_path_writes_nothing_either`, `r2_binary_signs_in_when_the_cached_jwt_is_about_to_expire` (`// R54` block: `config.json` byte-identical after a fresh sign-in) | covered |
 
 ## Gaps
@@ -110,3 +110,28 @@ None. Every requirement R1 to R54 has at least one test that names it.
 6. **Test harness note:** a dropped `wiremock::MockServer` returns to a pool
    and keeps listening, so it cannot be used to obtain a dead port. The
    transport-error tests bind and release a `TcpListener` instead.
+
+## Mutation-testing follow-up
+
+After the table above was complete, `cargo mutants` was run against the API
+client. Three injected bugs survived: the suite stayed green even though each
+one broke a behaviour the spec requires. The tests in
+`tests/mutation_kills.rs` were written, black-box from `spec/SPEC.md` and
+`docs/API.md`, to pin those behaviours so the same mutants are now killed:
+
+- **R53 and R12:** the earlier `r53_*` tests asserted that a refused call is
+  `NotAllowed` and sends nothing, but not what the error *says*. The new
+  tests also assert the `Display` text names the refused path and, for the
+  shared action endpoint, the refused `action` string.
+- **R20:** the earlier tests covered `status: OK` with the `jwt` member
+  missing. The new test covers `jwt: ""`, which the spec treats the same
+  way, and asserts the client remains signed out.
+- **R15:** the earlier backoff test measured wall-clock time around the
+  retry loop, which is too coarse to distinguish `base * 2^(n-1)` from
+  nearby wrong formulas. `docs/API.md` now exposes a pure
+  `client::backoff_delay(base, attempt)`, and the new tests assert its
+  exact values, that attempt `0` is treated as `1` without panicking, and,
+  by proptest over `base` and `attempt`, that consecutive delays double and
+  match the closed form.
+
+All eight new tests pass against the current implementation.
