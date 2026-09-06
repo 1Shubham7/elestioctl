@@ -123,7 +123,9 @@ pub enum ClientError {
         path: String,
     },
     /// The connection failed on every attempt (R15).
-    #[error("{path}: transport error after {attempts} attempt(s): {source}")]
+    // The source is deliberately not repeated in the message: anyhow prints the
+    // chain, and thiserror's convention is that a `#[source]` speaks for itself.
+    #[error("{path}: transport error after {attempts} attempt(s)")]
     Transport {
         /// Path requested.
         path: String,
@@ -263,6 +265,12 @@ enum Attempt {
 impl ApiClient {
     /// Build a client. The timeout applies to every request the client makes (R14).
     pub fn new(config: ClientConfig) -> Result<Self, ClientError> {
+        // reqwest is built with `rustls-no-provider` (aws-lc-sys needs cmake,
+        // which is not a given on a developer machine), so the process must
+        // install a crypto provider before the first client is built.
+        // `install_default` fails only if one is already installed, which is
+        // fine: the second client in a test process reuses the first's.
+        let _ = rustls::crypto::ring::default_provider().install_default();
         let http = reqwest::Client::builder()
             .timeout(config.timeout)
             .user_agent(concat!("elestioctl/", env!("CARGO_PKG_VERSION")))

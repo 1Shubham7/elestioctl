@@ -17,8 +17,10 @@
 #![forbid(unsafe_code)]
 
 pub mod client;
+pub mod commands;
 pub mod config;
 pub mod model;
+pub mod output;
 pub mod secret;
 
 /// Crate version, taken from `Cargo.toml` at compile time.
