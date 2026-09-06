@@ -19,8 +19,11 @@
 pub mod client;
 pub mod commands;
 pub mod config;
+pub mod diff;
+pub mod drift_config;
 pub mod model;
 pub mod output;
+pub mod report;
 pub mod secret;
 
 /// Crate version, taken from `Cargo.toml` at compile time.
