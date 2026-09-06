@@ -1,0 +1,5 @@
+---
+source: tests/output.rs
+expression: out
+---
+Authenticated as qa@example.com

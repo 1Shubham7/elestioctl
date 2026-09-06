@@ -1,0 +1,10 @@
+---
+source: tests/output.rs
+expression: "output::firewall_human(&report)"
+---
+TYPE    PORT       PROTOCOL  TARGETS                     EXPOSURE
+------  ---------  --------  --------------------------  ----------------
+INPUT   22         tcp       0.0.0.0/0, ::/0             OPEN TO INTERNET
+INPUT   5432       tcp       10.0.0.0/8, 192.168.1.0/24  
+INPUT   8000-9000  udp       10.0.0.0/8, ::/0            OPEN TO INTERNET
+OUTPUT  443        tcp       0.0.0.0/0

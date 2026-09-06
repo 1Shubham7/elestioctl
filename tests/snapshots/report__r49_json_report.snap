@@ -1,0 +1,45 @@
+---
+source: tests/report.rs
+expression: "serde_json::to_string_pretty(&v).unwrap()"
+---
+{
+  "differences": [
+    {
+      "actual": "staging-postgres",
+      "declared": "prod-postgres",
+      "field": "name",
+      "kind": "mismatch",
+      "service_id": "41928"
+    },
+    {
+      "actual": null,
+      "declared": "16",
+      "field": "version",
+      "kind": "mismatch",
+      "service_id": "41928"
+    },
+    {
+      "actual": null,
+      "declared": "INPUT 22/tcp [0.0.0.0/0, ::/0]",
+      "field": "firewall",
+      "kind": "absent",
+      "service_id": "41928"
+    },
+    {
+      "actual": "OUTPUT 8000-9000/udp [10.0.0.0/8]",
+      "declared": null,
+      "field": "firewall",
+      "kind": "unexpected",
+      "service_id": "41928"
+    },
+    {
+      "actual": null,
+      "declared": null,
+      "field": "missing",
+      "kind": "missing",
+      "project": "112",
+      "service_id": "555"
+    }
+  ],
+  "drift_detected": true
+}

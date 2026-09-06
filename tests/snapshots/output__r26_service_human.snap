@@ -1,0 +1,16 @@
+---
+source: tests/output.rs
+expression: out
+---
+ID           41928
+Name         prod-postgres
+Template     PostgreSQL
+Version      16
+Provider     hetzner
+Datacenter   hel1
+Server type  MEDIUM-2C-4G
+Status       running
+Deployment   Deployed
+IPv4         10.0.0.1
+CNAME        prod-postgres.example.elest.io
+Firewall     enabled

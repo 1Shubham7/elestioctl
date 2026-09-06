@@ -1,0 +1,5 @@
+---
+source: tests/output.rs
+expression: out
+---
+Firewall is disabled for service 41928.

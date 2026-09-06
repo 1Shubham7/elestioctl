@@ -1,0 +1,9 @@
+---
+source: tests/report.rs
+expression: "report::render_human(&sample())"
+---
+41928 name: declared=prod-postgres actual=staging-postgres
+41928 version: declared=16 actual=(absent)
+41928 firewall absent: INPUT 22/tcp [0.0.0.0/0, ::/0]
+41928 firewall unexpected: OUTPUT 8000-9000/udp [10.0.0.0/8]
+555 missing: service not found in project 112

@@ -1,0 +1,9 @@
+---
+source: tests/output.rs
+expression: "output::services_human(\"112\", &services())"
+---
+ID      NAME           TEMPLATE    VERSION  PROVIDER  DATACENTER  SERVER TYPE   STATUS
+------  -------------  ----------  -------  --------  ----------  ------------  -------
+41928   prod-postgres  PostgreSQL  16       hetzner   hel1        MEDIUM-2C-4G  running
+7       cache          Redis       7.2      scaleway  fr-par-1    SMALL-1C-2G   off
+123456  -              -           -        -         -           -             -

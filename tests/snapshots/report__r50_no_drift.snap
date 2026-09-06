@@ -1,0 +1,5 @@
+---
+source: tests/report.rs
+expression: out
+---
+No drift detected.
