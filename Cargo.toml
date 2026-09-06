@@ -1,0 +1,45 @@
+[package]
+name = "elestioctl"
+version = "0.1.0"
+edition = "2021"
+description = "Read-only Elestio CLI with drift detection"
+license = "MIT"
+
+publish = false
+
+[lib]
+name = "elestioctl"
+path = "src/lib.rs"
+
+[[bin]]
+name = "elestioctl"
+path = "src/main.rs"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+
+[dependencies]
+anyhow = "1.0.104"
+clap = { version = "4.6.6", features = ["derive"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["rustls-no-provider", "json"] }
+rustls = { version = "0.23.43", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+serde_path_to_error = "0.1.20"
+thiserror = "2.0.20"
+tokio = { version = "1.53.1", features = ["rt", "macros"] }
+toml = "1.1.5"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[dev-dependencies]
+assert_cmd = "2.2.2"
+insta = "1.48.0"
+predicates = "3.1.4"
+proptest = "1.11.0"
+tempfile = "3.27.0"
+wiremock = "0.6.5"
