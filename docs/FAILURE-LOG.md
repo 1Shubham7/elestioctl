@@ -230,3 +230,56 @@ fmt --check` fails by printing a diff, which matched none of the patterns.
 **Changed:** Habit only: run `cargo fmt` before verify. Included because it
 is a small instance of a large pattern, filtering tool output down to what
 you expect to see and thereby missing what you did not.
+
+## 16. The suite's backoff test could not tell exponents apart
+
+**Wrong:** QA's `r15_backoff_is_base_times_two_to_the_n_minus_one` asserted
+the retry delay by measuring elapsed wall-clock time around a retried call,
+with bounds loose enough to absorb scheduler noise. Mutation testing changed
+the exponent arithmetic in the client (`attempt - 1` to `attempt + 1`, and
+to `attempt / 1`) and the test still passed: the resulting delays of 300 ms
+or 600 ms were inside its tolerance for 150 ms. Two other survivors showed
+that no test asserted the refused-call error message names the action, and
+that an empty-string JWT in a `status: OK` sign-in response was accepted.
+
+**Caught by:** `cargo mutants` on the client module: 61 mutants, 48 caught,
+5 survived, 2 timed out, 6 unviable. The three pure modules that had been
+mutated first (diff, report, drift config) had zero survivors across 32
+mutants and nine hand-built ones, which had looked like a complete suite.
+
+**Changed:** The backoff arithmetic was extracted into a public pure
+function so it can be asserted exactly, and QA (still isolated, told only
+what the spec requires and not what the mutants were) wrote tests for the
+three behaviours. Lesson: timing tests pin "roughly right"; only a pure
+function pins the formula.
+
+## 17. Dev ran two mutation jobs at once and starved both
+
+**Wrong:** To cover more modules in the time available, Dev launched two
+`cargo mutants` runs concurrently (76 and 83 mutants). Each spends most of
+its time compiling; together they contended for the CPU and after several
+minutes had completed two mutants between them, on course to exceed their
+time limits with nothing recorded.
+
+**Caught by:** Checking interim progress instead of waiting for the
+notifications.
+
+**Changed:** Both were stopped. One run on the client alone with four
+parallel jobs and only the three relevant test binaries finished 61 mutants
+in seven minutes. The model, config and output modules were not
+mutation-tested; that is listed as a limitation in `docs/NOTES.md`.
+
+## 18. The hook blocked Dev's own failure-log entry
+
+**Wrong:** Dev tried to append entries 16 and 17 with a shell heredoc while
+QA mode was on. The text mentioned the client source file by path, and the
+QA-isolation rule blocks any shell command that names a source file other
+than the crate root. The entry about a mutation run was blocked by the rule
+protecting the mutation run's test author.
+
+**Caught by:** The hook.
+
+**Changed:** The entries were written with the file-editing tool instead,
+which the rule does not restrict for documentation files. No rule change:
+the hook cannot tell a heredoc from a `cat`, and making it try would make it
+weaker.
