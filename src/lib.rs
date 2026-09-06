@@ -16,7 +16,9 @@
 // manifest.
 #![forbid(unsafe_code)]
 
+pub mod client;
 pub mod config;
+pub mod model;
 pub mod secret;
 
 /// Crate version, taken from `Cargo.toml` at compile time.
