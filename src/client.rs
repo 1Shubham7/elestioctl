@@ -492,7 +492,7 @@ impl ApiClient {
                 }
             }
             // R15: base * 2^(n-1) before retry n.
-            let delay = self.config.retry_base * 2u32.saturating_pow(attempt - 1);
+            let delay = backoff_delay(self.config.retry_base, attempt);
             tokio::time::sleep(delay).await;
         }
     }
@@ -524,6 +524,18 @@ impl ApiClient {
             Err(e) => Attempt::NotJson(e.to_string()),
         }
     }
+}
+
+/// R15: the delay before retry `attempt` (1-based): `base * 2^(attempt - 1)`.
+/// So retry 1 waits `base`, retry 2 waits `2 * base`.
+///
+/// A free function rather than an inline expression because mutation
+/// testing showed the arithmetic could be changed (`-` to `+`, `-` to `/`)
+/// without any test noticing: wall-clock assertions on the retry loop were
+/// too loose to tell 150 ms from 300 ms. A pure function can be tested
+/// exactly.
+pub fn backoff_delay(base: Duration, attempt: u32) -> Duration {
+    base * 2u32.saturating_pow(attempt.saturating_sub(1))
 }
 
 /// R15: 408, 429, and every 5xx are retried. Nothing else is.

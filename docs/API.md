@@ -630,6 +630,19 @@ impl ApiClient
     ```
 
 <!-- doc -->
+/// R15: the delay before retry `attempt` (1-based): `base * 2^(attempt - 1)`.
+/// So retry 1 waits `base`, retry 2 waits `2 * base`.
+/// 
+/// A free function rather than an inline expression because mutation
+/// testing showed the arithmetic could be changed (`-` to `+`, `-` to `/`)
+/// without any test noticing: wall-clock assertions on the retry loop were
+/// too loose to tell 150 ms from 300 ms. A pure function can be tested
+/// exactly.
+```rust
+pub fn backoff_delay(base: Duration, attempt: u32) -> Duration { ... }
+```
+
+<!-- doc -->
 /// R15: 408, 429, and every 5xx are retried. Nothing else is.
 ```rust
 pub fn is_retryable_status(code: u16) -> bool { ... }
