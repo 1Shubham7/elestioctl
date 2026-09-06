@@ -597,6 +597,9 @@ impl ApiClient
     ```rust
     pub async fn get_service(
         &self,
+        project: &str,
+        vm_id: &str,
+    ) -> Result<Option<Service>, ClientError>
     ```
 
     <!-- doc -->
@@ -620,6 +623,10 @@ impl ApiClient
     ```rust
     pub async fn request(
         &self,
+        method: &str,
+        path: &str,
+        mut body: Value,
+    ) -> Result<Value, ClientError>
     ```
 
 <!-- doc -->
@@ -853,6 +860,9 @@ pub enum SessionSource
 ```rust
 pub async fn ensure_session(
     client: &mut ApiClient,
+    settings: &Settings,
+    now: SystemTime,
+) -> Result<SessionSource, ClientError> { ... }
 ```
 
 <!-- doc -->
@@ -877,6 +887,8 @@ pub struct AuthReport
 ```rust
 pub async fn auth_test(
     client: &mut ApiClient,
+    settings: &Settings,
+) -> Result<AuthReport, CommandError> { ... }
 ```
 
 <!-- doc -->
@@ -884,6 +896,8 @@ pub async fn auth_test(
 ```rust
 pub async fn list_services(
     client: &ApiClient,
+    project: &str,
+) -> Result<Vec<Service>, CommandError> { ... }
 ```
 
 <!-- doc -->
@@ -892,6 +906,9 @@ pub async fn list_services(
 ```rust
 pub async fn get_service(
     client: &ApiClient,
+    project: &str,
+    vm_id: &str,
+) -> Result<Service, CommandError> { ... }
 ```
 
 <!-- doc -->
@@ -901,24 +918,6 @@ pub async fn get_service(
 pub struct FirewallReport
 ```
 
-    <!-- doc -->
-    /// The service the rules belong to.
-    ```rust
-    pub vm_id: String,
-    ```
-
-    <!-- doc -->
-    /// R29: `isFirewallActivated` from the service details.
-    ```rust
-    pub enabled: bool,
-    ```
-
-    <!-- doc -->
-    /// Rules as the API lists them. Empty when the firewall is disabled.
-    ```rust
-    pub rules: Vec<FirewallRule>,
-    ```
-
 <!-- doc -->
 /// R29: fetch the service first to learn whether the firewall is enabled,
 /// then the rules. A disabled firewall short-circuits to an empty rule list
@@ -926,6 +925,9 @@ pub struct FirewallReport
 ```rust
 pub async fn firewall_get(
     client: &ApiClient,
+    project: &str,
+    vm_id: &str,
+) -> Result<FirewallReport, CommandError> { ... }
 ```
 
 <!-- doc -->
@@ -935,18 +937,6 @@ pub async fn firewall_get(
 ```rust
 pub struct DriftReport
 ```
-
-    <!-- doc -->
-    /// Differences in R42 order. Empty means no drift (R50).
-    ```rust
-    pub differences: Vec<crate::diff::Difference>,
-    ```
-
-    <!-- doc -->
-    /// How many services were declared. Zero triggers a warning (R50).
-    ```rust
-    pub declared_count: usize,
-    ```
 
 ```rust
 impl DriftReport
@@ -971,6 +961,8 @@ impl DriftReport
 ```rust
 pub async fn drift(
     client: &ApiClient,
+    declared: &[crate::diff::Declared],
+) -> Result<DriftReport, CommandError> { ... }
 ```
 
 
@@ -1131,6 +1123,10 @@ impl Rule
     ```rust
     pub fn new(
         rule_type: &str,
+        port: &str,
+        protocol: &str,
+        targets: impl IntoIterator<Item = String>,
+    ) -> Rule
     ```
 
     <!-- doc -->
@@ -1495,8 +1491,10 @@ pub fn render_human(differences: &[Difference]) -> String { ... }
 
 <!-- doc -->
 /// R49: `{ "drift_detected": bool, "differences": [...] }`. Every element
-/// carries the same five keys; `declared` and `actual` are `null` where
-/// they do not apply.
+/// carries `kind`, `service_id`, `field`, `declared` and `actual`, with
+/// `declared` and `actual` `null` where they do not apply. The `missing`
+/// kind additionally carries `project`, so a consumer can see where the
+/// service was looked for.
 ```rust
 pub fn render_json(differences: &[Difference]) -> Value { ... }
 ```

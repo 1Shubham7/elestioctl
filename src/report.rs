@@ -49,8 +49,10 @@ pub fn render_human(differences: &[Difference]) -> String {
 }
 
 /// R49: `{ "drift_detected": bool, "differences": [...] }`. Every element
-/// carries the same five keys; `declared` and `actual` are `null` where
-/// they do not apply.
+/// carries `kind`, `service_id`, `field`, `declared` and `actual`, with
+/// `declared` and `actual` `null` where they do not apply. The `missing`
+/// kind additionally carries `project`, so a consumer can see where the
+/// service was looked for.
 pub fn render_json(differences: &[Difference]) -> Value {
     let items: Vec<Value> = differences.iter().map(difference_json).collect();
     json!({

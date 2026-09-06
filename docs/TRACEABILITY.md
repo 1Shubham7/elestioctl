@@ -27,7 +27,7 @@ with the spec (details in the notes below the table); **GAP** means no test.
 | R14 | Per-attempt timeout, default 30 s, `ELESTIO_TIMEOUT_SECS` | client: `r14_default_timeout_is_thirty_seconds_and_overridable_by_env_name`, `r14_per_attempt_timeout_is_enforced_and_timeouts_are_retried`; cli: `r14_timeout_secs_env_var_bounds_each_attempt` | covered |
 | R15 | Retry 429/408/5xx/transport, 3 requests max, backoff `base * 2^(n-1)`, no retry on other 4xx or `KO` | client: `r15_retry_constants_match_spec`, `r15_retryable_status_set_is_exactly_408_429_and_5xx`, `r15_retries_5xx_three_times_in_total`, `r15_retries_429_then_succeeds`, `r15_retries_408_then_succeeds`, `r15_transport_error_is_retried_three_times`, `r15_backoff_is_base_times_two_to_the_n_minus_one`, `r15_other_4xx_is_not_retried`, `r15_ko_envelope_is_not_retried`; commands: `r15_drift_retries_a_flaky_details_call`; cli: `r15_binary_retries_5xx_three_times_then_fails`, `r15_binary_recovers_after_a_transient_5xx` | covered |
 | R16 | Non-retried failure names the path and the HTTP status or the `KO` message | client: `r16_http_error_names_path_and_status`, `r16_ko_error_names_path_and_api_message`, `r16_ko_without_message_still_names_path` | covered |
-| R17 | Malformed JSON: parse error naming the JSON path, no panic | client: `r17_non_json_body_is_a_parse_error_not_a_panic`, `r17_wrong_field_type_names_the_json_path`, `r17_wrong_container_type_names_the_json_path`, `r17_firewall_rule_missing_required_field_names_path` | **FAILING** (see note 1) |
+| R17 | Malformed JSON: parse error naming the JSON path, no panic | client: `r17_non_json_body_is_a_parse_error_not_a_panic`, `r17_wrong_field_type_names_the_json_path`, `r17_wrong_container_type_names_the_json_path`, `r17_firewall_rule_missing_required_field_names_path` | covered (was FAILING when written; see note 1) |
 | R18 | `auth test` calls `checkAPIToken`, ignoring any cached JWT | client: `r18_sign_in_posts_email_and_token_to_check_api_token`; commands: `r18_auth_test_always_signs_in_even_with_fresh_cache`; cli: `r18_auth_test_ignores_a_fresh_cached_jwt` | covered |
 | R19 | Success prints the email; `--json` has `authenticated` and `email` | commands: `r19_auth_report_carries_the_authenticated_email`; output: `r19_auth_human_prints_the_email`, `r19_auth_json_has_authenticated_and_email`; cli: `r19_auth_test_human_prints_the_email`, `r19_auth_test_json_has_authenticated_and_email` | covered |
 | R20 | Auth failure exits 1; rejection distinct from "no credentials" | client: `r20_sign_in_rejected_when_status_is_not_ok`, `r20_sign_in_rejected_when_ok_but_no_jwt`; commands: `r20_auth_test_rejection_is_a_distinct_error`; cli: `r20_rejected_credentials_exit_1_and_are_not_confused_with_missing_ones`, `r20_ok_without_jwt_is_also_a_rejection` | covered |
@@ -72,8 +72,11 @@ None. Every requirement R1 to R54 has at least one test that names it.
 
 ## Notes on failing tests and observations
 
-1. **R17, FAILING:** `tests/client.rs::r17_non_json_body_is_a_parse_error_not_a_panic`.
-   Spec: malformed JSON in a response MUST produce a parse error. Observed:
+1. **R17, was FAILING when this table was written, fixed in commit `bec9251`
+   without changing the test:**
+   `tests/client.rs::r17_non_json_body_is_a_parse_error_not_a_panic`.
+   Spec: malformed JSON in a response MUST produce a parse error. Observed
+   at the time:
    a `200` whose body is `<html>gateway</html>` surfaces as
    `ClientError::Transport { attempts: 3, source: reqwest Decode error }`
    and the request is sent three times. The body decode failure is being
@@ -86,13 +89,15 @@ None. Every requirement R1 to R54 has at least one test that names it.
    deserialised (`servers`, `rules`) rather than to the response root, so the
    container name is not part of the path. The tests accept the
    array-relative form because it still locates the failing element and
-   field; a full path (`servers[1].vmID`) would be clearer.
+   field; a full path (`servers[1].vmID`) would be clearer. Update: the
+   fix commit prefixes the container, so paths now read `servers[1].vmID`,
+   `serviceInfos[0].vmID`, `rules[0]`; the tests still pass.
 3. **R49, observation (tests pass):** the `missing` element in `--json`
    output carries a sixth key, `project`, in addition to the five the spec
    lists. The spec does not forbid extra keys, so the tests assert the five
-   required keys are present rather than exact key sets. `docs/API.md` says
-   "every element carries the same five keys", which is not what the code
-   does for `missing`.
+   required keys are present rather than exact key sets. `docs/API.md` said
+   "every element carries the same five keys", which was not what the code
+   did for `missing`; the doc comment was corrected to name the extra key.
 4. **R48, observation:** when a declared scalar has no actual value (the API
    omitted the field) the mismatch line renders `actual=(absent)`. The spec
    gives no rendering for a `None` actual; `(absent)` is accepted.
@@ -100,7 +105,8 @@ None. Every requirement R1 to R54 has at least one test that names it.
    `commands::get_service` and `commands::firewall_get` take `(project,
    vm_id)` in that order. `docs/API.md` truncates these signatures, and the
    first draft of the tests assumed `(vm_id, project)`; the tests were
-   corrected, but the generated API document should show full signatures.
+   corrected. Update: the extractor was fixed to follow multi-line function
+   signatures to their closing brace and `docs/API.md` was regenerated.
 6. **Test harness note:** a dropped `wiremock::MockServer` returns to a pool
    and keeps listening, so it cannot be used to obtain a dead port. The
    transport-error tests bind and release a `TcpListener` instead.
